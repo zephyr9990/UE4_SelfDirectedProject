@@ -2,9 +2,12 @@
 
 
 #include "PlayerCharacter.h"
+#include "StatsComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
+#include "Blueprint/UserWidget.h"
+
 
 
 // Sets default values
@@ -12,7 +15,6 @@ APlayerCharacter::APlayerCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 // Called when the game starts or when spawned
@@ -25,6 +27,22 @@ void APlayerCharacter::BeginPlay()
 	if (!PlayerController)
 	{
 		UE_LOG(LogTemp, Error, TEXT("No player controller on player."));
+	}
+
+	PlayerStatsComponent = FindComponentByClass<UStatsComponent>();
+	if (!PlayerStatsComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("No stats component on player."));
+	}
+
+	if (!wPlayerHUD)
+	{
+		UE_LOG(LogTemp, Error, TEXT("No HUD class on player."));
+	}
+	else
+	{
+		PlayerHUD = CreateWidget<UUserWidget>(PlayerController, wPlayerHUD);
+		PlayerHUD->AddToViewport();
 	}
 }
 

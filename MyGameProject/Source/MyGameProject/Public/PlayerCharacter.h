@@ -6,6 +6,10 @@
 #include "GameFramework/Character.h"
 #include "PlayerCharacter.generated.h"
 
+// Forward Declaration
+class UStatsComponent;
+class UUserWidget;
+
 UCLASS()
 class MYGAMEPROJECT_API APlayerCharacter : public ACharacter
 {
@@ -26,7 +30,9 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-
+	// Holds the player's stats
+	UPROPERTY(BlueprintReadOnly, Category = "Stats")
+	UStatsComponent* PlayerStatsComponent;
 private:
 	/** Moves the player forward or backward.
 	* @param Amount: The amount to move.
@@ -48,8 +54,13 @@ private:
 	*/
 	void RotatePitch(float Amount);
 
-	APlayerController* PlayerController;
-
 	UPROPERTY(EditAnywhere, Category = "Camera Speed")
 	float LookSensitivity = 200.0f;
+
+	APlayerController* PlayerController;
+
+	UPROPERTY(EditAnywhere, Category = "HUD")
+	TSubclassOf<UUserWidget> wPlayerHUD;
+
+	UUserWidget* PlayerHUD;
 };
