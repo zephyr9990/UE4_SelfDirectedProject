@@ -55,6 +55,11 @@ Build/*
 # Starter Content
 Content/StarterContent/HDRI*
 
+# Open World Demo
+Content/KiteDemo/LevelContent*
+Content/KiteDemo/Maps*
+Content/KiteDemo/Textures*
+
 # Whitelist PakBlacklist-<BuildConfiguration>.txt files
 !Build/*/
 Build/*/**
