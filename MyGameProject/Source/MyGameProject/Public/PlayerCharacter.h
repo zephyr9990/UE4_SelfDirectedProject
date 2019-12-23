@@ -8,6 +8,7 @@
 
 // Forward Declaration
 class UStatsComponent;
+class USphereComponent;
 class UUserWidget;
 
 UCLASS()
@@ -33,6 +34,9 @@ public:
 	// Holds the player's stats
 	UPROPERTY(BlueprintReadOnly, Category = "Stats")
 	UStatsComponent* PlayerStatsComponent;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Collision")
+	USphereComponent* LockOnRangeSphere = nullptr;
 private:
 	/** Moves the player forward or backward.
 	* @param Amount: The amount to move.
@@ -54,13 +58,18 @@ private:
 	*/
 	void RotatePitch(float Amount);
 
-	UPROPERTY(EditAnywhere, Category = "Camera Speed")
+	void LockOnToNearestTarget();
+
+	UPROPERTY(EditAnywhere, Category = "Setup")
 	float LookSensitivity = 200.0f;
 
-	APlayerController* PlayerController;
+	UPROPERTY(EditAnywhere, Category = "Setup")
+	TSubclassOf<UUserWidget> wPlayerHUD = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = "HUD")
-	TSubclassOf<UUserWidget> wPlayerHUD;
+	UPROPERTY(EditAnywhere, Category = "Setup")
+	float LockOnSphereRadius = 2000.0f;
 
-	UUserWidget* PlayerHUD;
+	APlayerController* PlayerController = nullptr;
+
+	UUserWidget* PlayerHUD = nullptr;
 };

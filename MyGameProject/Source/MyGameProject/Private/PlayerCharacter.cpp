@@ -4,6 +4,7 @@
 #include "PlayerCharacter.h"
 #include "StatsComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/SphereComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 #include "Blueprint/UserWidget.h"
@@ -15,6 +16,9 @@ APlayerCharacter::APlayerCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	LockOnRangeSphere = CreateDefaultSubobject<USphereComponent>(FName("LockOnRange"));
+	LockOnRangeSphere->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	LockOnRangeSphere->SetSphereRadius(LockOnSphereRadius);
 }
 
 // Called when the game starts or when spawned
@@ -51,6 +55,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
 }
 
 // Called to bind functionality to input
@@ -58,11 +63,16 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// Movement
 	PlayerInputComponent->BindAxis(FName("Forward"), this, &APlayerCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(FName("Right"), this, &APlayerCharacter::MoveRight);
 
+	// Camera Rotation
 	PlayerInputComponent->BindAxis(FName("Yaw"), this, &APlayerCharacter::RotateYaw);
 	PlayerInputComponent->BindAxis(FName("Pitch"), this, &APlayerCharacter::RotatePitch);
+
+	// Actions
+	PlayerInputComponent->BindAction(FName("LockOn"), EInputEvent::IE_Pressed, this, &APlayerCharacter::LockOnToNearestTarget);
 }
 
 void APlayerCharacter::MoveForward(float Amount)
@@ -97,5 +107,10 @@ void APlayerCharacter::RotateYaw(float Amount)
 void APlayerCharacter::RotatePitch(float Amount)
 {
 	AddControllerPitchInput(LookSensitivity * Amount * GetWorld()->GetDeltaSeconds());
+}
+
+void APlayerCharacter::LockOnToNearestTarget()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Locking on!"));
 }
 
