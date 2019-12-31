@@ -3,6 +3,7 @@
 
 #include "PlayerCharacter.h"
 #include "StatsComponent.h"
+#include "EnemyCharacter.h"
 #include "Components/InputComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -55,7 +56,37 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	TArray<AActor*> Actors;
+	LockOnRangeSphere->GetOverlappingActors(Actors);
+	// Make sure closest enemy is within lock-on range.
+	if (ClosestEnemy && Actors.Find(ClosestEnemy) == INDEX_NONE)
+	{
+		ClosestEnemy->SetLockOnArrowVisibility(false);
+		ClosestEnemy = nullptr;
+	}
 
+	// Look through the overlapping actors to find the closest enemy to the player.
+	for (AActor* Actor : Actors)
+	{
+		AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(Actor);
+		if (Enemy)
+		{
+			// Check to see if this is the closest enemy to the player
+			FVector DistanceToEnemy = Enemy->GetActorLocation() - GetActorLocation();
+			bool bEnemyIsNearestToPlayer = IsNearestTarget(DistanceToEnemy);
+			if (bEnemyIsNearestToPlayer)
+			{
+				// Turn off current enemy's arrow lock on widget,
+				// and turn on the new one's arrow widget.
+				if (ClosestEnemy)
+				{
+					ClosestEnemy->SetLockOnArrowVisibility(false);
+				}
+				ClosestEnemy = Enemy;
+				ClosestEnemy->SetLockOnArrowVisibility(true);
+			}
+		}
+	}
 }
 
 // Called to bind functionality to input
@@ -109,8 +140,27 @@ void APlayerCharacter::RotatePitch(float Amount)
 	AddControllerPitchInput(LookSensitivity * Amount * GetWorld()->GetDeltaSeconds());
 }
 
+bool APlayerCharacter::IsNearestTarget(FVector DistanceToEnemy)
+{
+	if (!ClosestEnemy)
+	{
+		return true;
+	}
+
+	FVector DistanceToClosestEnemy = ClosestEnemy->GetActorLocation() - GetActorLocation();
+	return DistanceToEnemy.Size() < DistanceToClosestEnemy.Size();
+}
+
 void APlayerCharacter::LockOnToNearestTarget()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Locking on!"));
+	if (LockOnTarget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Releasing lock on from %s!"), *LockOnTarget->GetName());
+		LockOnTarget = nullptr;
+		return;
+	}
+
+	LockOnTarget = ClosestEnemy;
+	UE_LOG(LogTemp, Warning, TEXT("Locking onto %s!"), *ClosestEnemy->GetName());
 }
 

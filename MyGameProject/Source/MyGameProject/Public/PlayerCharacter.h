@@ -7,6 +7,7 @@
 #include "PlayerCharacter.generated.h"
 
 // Forward Declaration
+class AEnemyCharacter;
 class UStatsComponent;
 class USphereComponent;
 class UUserWidget;
@@ -58,18 +59,31 @@ private:
 	*/
 	void RotatePitch(float Amount);
 
+	/** Checks to see if the given target is closest to the player */
+	bool IsNearestTarget(FVector DistanceToEnemy);
+
+	/** Locks on the target nearest the player. */
 	void LockOnToNearestTarget();
 
+	// Used to control camera speed
 	UPROPERTY(EditAnywhere, Category = "Setup")
 	float LookSensitivity = 200.0f;
 
+	// The specific player HUD to draw
 	UPROPERTY(EditAnywhere, Category = "Setup")
 	TSubclassOf<UUserWidget> wPlayerHUD = nullptr;
 
+	// The range that the player can lock on to enemies
 	UPROPERTY(EditAnywhere, Category = "Setup")
 	float LockOnSphereRadius = 2000.0f;
 
 	APlayerController* PlayerController = nullptr;
 
 	UUserWidget* PlayerHUD = nullptr;
+
+	// Used to see what the player is currently locked on to.
+	AEnemyCharacter* LockOnTarget = nullptr;
+
+	// Used to see which enemy to lock on to.
+	AEnemyCharacter* ClosestEnemy = nullptr;
 };

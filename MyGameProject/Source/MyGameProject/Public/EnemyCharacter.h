@@ -6,6 +6,9 @@
 #include "GameFramework/Character.h"
 #include "EnemyCharacter.generated.h"
 
+// Forward Declarations
+class UWidgetComponent;
+
 UCLASS()
 class MYGAMEPROJECT_API AEnemyCharacter : public ACharacter
 {
@@ -26,4 +29,11 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	/** Sets the visibility of the lock on arrow
+	* @param bValue: true = show, false = don't show
+	*/
+	void SetLockOnArrowVisibility(bool bValue);
+
+private:
+	UWidgetComponent* LockOnArrow = nullptr;
 };
