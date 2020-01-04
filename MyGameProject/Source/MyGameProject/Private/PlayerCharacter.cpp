@@ -7,8 +7,11 @@
 #include "Components/InputComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Engine/World.h"
+#include "Camera/CameraComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "Math/UnrealMathVectorCommon.h"
 
 
 
@@ -20,6 +23,14 @@ APlayerCharacter::APlayerCharacter()
 	LockOnRangeSphere = CreateDefaultSubobject<USphereComponent>(FName("LockOnRange"));
 	LockOnRangeSphere->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	LockOnRangeSphere->SetSphereRadius(LockOnSphereRadius);
+
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(FName("CameraBoom"));
+	CameraBoom->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	CameraBoom->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f));
+	CameraBoom->TargetArmLength = DefaultBoomArmLength;
+
+	Camera = CreateDefaultSubobject<UCameraComponent>(FName("FollowCamera"));
+	Camera->AttachToComponent(CameraBoom, FAttachmentTransformRules::KeepRelativeTransform);
 }
 
 // Called when the game starts or when spawned
@@ -58,40 +69,81 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	TArray<AActor*> Actors;
 	LockOnRangeSphere->GetOverlappingActors(Actors);
-	// Make sure closest enemy is within lock-on range.
+	// Make sure closest enemy is within lock-on range. If not, turn off their lock on icon
 	if (ClosestEnemy && Actors.Find(ClosestEnemy) == INDEX_NONE)
 	{
 		ClosestEnemy->SetLockOnArrowVisibility(false);
 		ClosestEnemy = nullptr;
 	}
 
-	// Look through the overlapping actors to find the closest enemy to the player.
-	for (AActor* Actor : Actors)
+	if (!LockOnTarget) 
 	{
-		AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(Actor);
-		if (Enemy)
+		// Reset Camera
+		if (bLockOnReleased)
 		{
-			// Check to see if this is the closest enemy to the player
-			FVector DistanceToEnemy = Enemy->GetActorLocation() - GetActorLocation();
-			bool bEnemyIsNearestToPlayer = IsNearestTarget(DistanceToEnemy);
-			if (bEnemyIsNearestToPlayer)
+			float CurrentTime = DeltaTime;
+			FVector CurrentCameraLocation = CameraBoom->GetRelativeLocation();
+			FVector CameraBoomDefaultLocation = FMath::Lerp(
+				CurrentCameraLocation,
+				FVector(0, 0, 50.0f),
+				DeltaTime * 5
+			);
+			CameraBoom->SetRelativeLocation(CameraBoomDefaultLocation);
+
+			float CurrentArmLength = CameraBoom->TargetArmLength;
+			float ArmLength = FMath::Lerp(CurrentArmLength, DefaultBoomArmLength, DeltaTime * 5);
+			CameraBoom->TargetArmLength = ArmLength;
+		}
+		// Find the closest enemy for player to lock on to
+		for (AActor* Actor : Actors)
+		{
+			AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(Actor);
+			if (Enemy)
 			{
-				// Turn off current enemy's arrow lock on widget,
-				// and turn on the new one's arrow widget.
-				if (ClosestEnemy)
+				// Check to see if this is the closest enemy to the player
+				FVector DistanceToEnemy = Enemy->GetActorLocation() - GetActorLocation();
+				bool bEnemyIsNearestToPlayer = IsNearestTarget(DistanceToEnemy);
+				if (bEnemyIsNearestToPlayer)
 				{
-					ClosestEnemy->SetLockOnArrowVisibility(false);
+					// Turn off current closest enemy's lock on widget,
+					// and turn on the new closest enemy's lock on widget.
+					if (ClosestEnemy)
+					{
+						ClosestEnemy->SetLockOnArrowVisibility(false);
+					}
+					ClosestEnemy = Enemy;
+					ClosestEnemy->SetLockOnArrowVisibility(true);
 				}
-				ClosestEnemy = Enemy;
-				ClosestEnemy->SetLockOnArrowVisibility(true);
 			}
 		}
+	}
+	else // maintain camera distance to locked on enemy
+	{
+		FVector DistanceToLockOnTarget = LockOnTarget->GetActorLocation() - GetActorLocation();
+		FVector MidPointBetweenPlayerAndTarget = DistanceToLockOnTarget / 2;
+
+		DistanceToLockOnTarget.Normalize();
+		FRotator TowardsLockOnTarget = DistanceToLockOnTarget.Rotation();
+		TowardsLockOnTarget.Normalize();
+		SetActorRotation(TowardsLockOnTarget);
+
+		FVector LockOnLocation = FMath::Lerp(
+			CameraBoom->GetRelativeLocation(),
+			TowardsLockOnTarget.Vector().ForwardVector * MidPointBetweenPlayerAndTarget.Size(),
+			DeltaTime * 5
+		);
+		CameraBoom->SetRelativeLocation(LockOnLocation);
+
+		float CurrentArmLength = CameraBoom->TargetArmLength;
+		float ArmLength = FMath::Lerp(CurrentArmLength, CurrentBoomArmLength + MidPointBetweenPlayerAndTarget.Size(), DeltaTime * 5);
+		CameraBoom->TargetArmLength = ArmLength;
+		UE_LOG(LogTemp, Warning, TEXT("%f"), ArmLength);
 	}
 }
 
 // Called to bind functionality to input
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
+{ 
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	// Movement
@@ -153,14 +205,35 @@ bool APlayerCharacter::IsNearestTarget(FVector DistanceToEnemy)
 
 void APlayerCharacter::LockOnToNearestTarget()
 {
+	// If player is already locked on, release the lock on from current target
 	if (LockOnTarget)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Releasing lock on from %s!"), *LockOnTarget->GetName());
 		LockOnTarget = nullptr;
+		bLockOnReleased = true;
 		return;
 	}
 
-	LockOnTarget = ClosestEnemy;
-	UE_LOG(LogTemp, Warning, TEXT("Locking onto %s!"), *ClosestEnemy->GetName());
+	if (ClosestEnemy)
+	{
+		LockOnTarget = ClosestEnemy;
+		CurrentBoomArmLength = CameraBoom->TargetArmLength;
+		UE_LOG(LogTemp, Warning, TEXT("Locking onto %s!"), *ClosestEnemy->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Reorienting camera behind player."))
+		CameraBoom->SetRelativeLocation(FVector(0, 0, 50));
+		
+		/*CameraBoom->bInheritYaw = false;
+		CameraBoom->bInheritRoll = false;
+		CameraBoom->bInheritPitch = false;
+
+		CameraBoom->SetRelativeRotation(GetActorForwardVector().Rotation());
+	
+		CameraBoom->bInheritYaw = true;
+		CameraBoom->bInheritRoll = true;
+		CameraBoom->bInheritPitch = true;*/
+	}
 }
 

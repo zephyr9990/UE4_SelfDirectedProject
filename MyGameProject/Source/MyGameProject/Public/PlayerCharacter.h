@@ -11,6 +11,8 @@ class AEnemyCharacter;
 class UStatsComponent;
 class USphereComponent;
 class UUserWidget;
+class USpringArmComponent;
+class UCameraComponent;
 
 UCLASS()
 class MYGAMEPROJECT_API APlayerCharacter : public ACharacter
@@ -37,7 +39,14 @@ public:
 	UStatsComponent* PlayerStatsComponent;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Collision")
-	USphereComponent* LockOnRangeSphere = nullptr;
+	USphereComponent* LockOnRangeSphere;
+
+	// Used for locking onto enemies.
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* CameraBoom;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* Camera;
 private:
 	/** Moves the player forward or backward.
 	* @param Amount: The amount to move.
@@ -77,6 +86,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Setup")
 	float LockOnSphereRadius = 2000.0f;
 
+	// The target arm length of the camera boom
+	UPROPERTY(EditAnywhere, Category = "Setup")
+	float DefaultBoomArmLength = 300.0f;
+
 	APlayerController* PlayerController = nullptr;
 
 	UUserWidget* PlayerHUD = nullptr;
@@ -86,4 +99,10 @@ private:
 
 	// Used to see which enemy to lock on to.
 	AEnemyCharacter* ClosestEnemy = nullptr;
+
+	// Used to control camera zoom
+	float CurrentBoomArmLength = 500.0f;
+
+	// Used to reset camera smoothly
+	bool bLockOnReleased = false;
 };
